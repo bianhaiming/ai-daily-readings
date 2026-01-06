@@ -1,0 +1,77 @@
+{
+  "daily_limit": 5,
+  "minimum_score": 8.0,
+  "llm_provider": "nvidia",
+  "sources": {
+    "github": {
+      "enabled": true,
+      "priority": "high",
+      "daily_limit": 1,
+      "config": {
+        "trending_languages": ["python", "typescript", "rust", "go"],
+        "topics": ["ai", "llm", "machine-learning", "developer-tools", "automation"],
+        "min_stars": 100,
+        "days": 7
+      }
+    },
+    "twitter": {
+      "enabled": true,
+      "priority": "high",
+      "daily_limit": 1,
+      "fetcher": "nitter",
+      "config": {
+        "accounts": [
+          "ylecun",
+          "karpathy",
+          "AndrewYNg",
+          "fchollet",
+          "OpenAI",
+          "AnthropicAI",
+          "HuggingFace",
+          "LangChainAI"
+        ],
+        "nitter_instances": [
+          "https://nitter.net",
+          "https://nitter.poast.org",
+          "https://nitter.privacydev.net",
+          "https://nitter.1d4.us"
+        ],
+        "min_length": 500,
+        "min_likes": 100
+      }
+    },
+    "arxiv": {
+      "enabled": true,
+      "priority": "medium",
+      "daily_limit": 1,
+      "config": {
+        "categories": ["cs.AI", "cs.LG", "cs.CL", "cs.CV"],
+        "days": 3
+      }
+    },
+    "blogs": {
+      "enabled": true,
+      "priority": "medium",
+      "daily_limit": 1,
+      "feeds": [
+        "https://openai.com/blog/rss.xml",
+        "https://www.anthropic.com/index/rss.xml",
+        "https://ai.googleblog.com/feeds/posts/default",
+        "https://distill.pub/rss.xml",
+        "https://thegradient.pub/rss/",
+        "https://lilianweng.github.io/posts/atom.xml",
+        "https://jayalamer.wordpress.com/feed/",
+        "https://karpathy.github.io/feed.xml"
+      ]
+    },
+    "hackernews": {
+      "enabled": true,
+      "priority": "low",
+      "daily_limit": 1,
+      "config": {
+        "tags": ["artificial", "machine-learning", "ai"],
+        "min_score": 100
+      }
+    }
+  }
+}
