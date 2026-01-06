@@ -13,11 +13,20 @@ class GitHubFetcher:
         self.days = config.get('days', 7)
         self.token = os.environ.get('GITHUB_TOKEN')
 
+        if not self.token:
+            print("⚠️  GITHUB_TOKEN 未设置，使用匿名访问（速率限制较低）")
+
     def fetch_trending(self) -> List[Dict]:
+        print(f"  🔍 搜索语言: {self.languages}")
+        print(f"  🔍 主题: {self.topics}")
+        print(f"  🔍 最小 stars: {self.min_stars}")
+        print(f"  🔍 最近 {self.days} 天")
+
         projects = []
 
         for language in self.languages:
             query = self._build_trending_query(language)
+            print(f"  🔍 查询: {query}")
             results = self._search_repositories(query)
             projects.extend(results)
 
@@ -57,10 +66,15 @@ class GitHubFetcher:
             response.raise_for_status()
 
             data = response.json()
-            return [self._format_repo(item) for item in data.get('items', [])]
+            total_count = data.get('total_count', 0)
+            items = data.get('items', [])
+
+            print(f"  📊 总共 {total_count} 个仓库，获取前 {len(items)} 个")
+
+            return [self._format_repo(item) for item in items]
 
         except requests.exceptions.RequestException as e:
-            print(f"Error searching GitHub repositories: {e}")
+            print(f"  ❌ 搜索 GitHub 仓库失败: {e}")
             return []
 
     def _format_repo(self, repo: Dict) -> Dict:
