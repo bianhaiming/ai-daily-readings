@@ -1,22 +1,22 @@
 {
-  "daily_limit": 5,
-  "minimum_score": 8.0,
+  "daily_limit": 3,
+  "minimum_score": 7.0,
   "llm_provider": "nvidia",
   "nvidia_model": "meta/llama-3.1-70b-instruct",
   "sources": {
     "github": {
       "enabled": true,
       "priority": "high",
-      "daily_limit": 1,
+      "daily_limit": 2,
       "config": {
-        "trending_languages": ["python", "typescript", "rust", "go"],
-        "topics": ["ai", "llm", "machine-learning", "developer-tools", "automation"],
+        "trending_languages": ["python", "typescript"],
+        "topics": ["ai", "llm", "machine-learning"],
         "min_stars": 100,
         "days": 7
       }
     },
     "twitter": {
-      "enabled": true,
+      "enabled": false,
       "priority": "high",
       "daily_limit": 1,
       "fetcher": "nitter",
@@ -42,7 +42,7 @@
       }
     },
     "arxiv": {
-      "enabled": true,
+      "enabled": false,
       "priority": "medium",
       "daily_limit": 1,
       "config": {
@@ -51,7 +51,7 @@
       }
     },
     "blogs": {
-      "enabled": true,
+      "enabled": false,
       "priority": "medium",
       "daily_limit": 1,
       "feeds": [
