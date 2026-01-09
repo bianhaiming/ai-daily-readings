@@ -1,20 +1,25 @@
 import os
 import requests
 import json
+import re
 from typing import Dict, Optional
 
 
 class NvidiaClient:
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         self.api_key = api_key or os.environ.get('NVIDIA_API_KEY')
         if not self.api_key:
             raise ValueError("NVIDIA_API_KEY environment variable is required")
 
         self.base_url = "https://integrate.api.nvidia.com/v1"
-        self.model = "meta/llama-3.1-70b-instruct"
 
-    def chat(self, prompt: str, temperature: float = 0.3, max_tokens: int = 1000) -> str:
+        self.model = model or "meta/llama-3.1-70b-instruct"
+
+        self.is_glm_model = self.model.startswith('z-ai/glm')
+
+    def chat(self, prompt: str, temperature: float = 0.3, max_tokens: int = 1000, 
+             system_prompt: Optional[str] = None) -> str:
         url = f"{self.base_url}/chat/completions"
 
         headers = {
@@ -22,9 +27,14 @@ class NvidiaClient:
             "Content-Type": "application/json"
         }
 
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
         payload = {
             "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens
         }
@@ -34,14 +44,80 @@ class NvidiaClient:
             response.raise_for_status()
 
             result = response.json()
-            return result['choices'][0]['message']['content']
+
+            if self.is_glm_model:
+                return self._extract_glm_response(result)
+            else:
+                return result['choices'][0]['message']['content']
 
         except requests.exceptions.RequestException as e:
             print(f"Error calling NVIDIA API: {e}")
             return ""
 
+    def _extract_glm_response(self, result: Dict) -> str:
+        """从 GLM-4.7 响应中提取最终答案"""
+        if 'choices' not in result or len(result['choices']) == 0:
+            return ""
+
+        choice = result['choices'][0]
+        message = choice.get('message', {})
+        content = message.get('content')
+        reasoning = message.get('reasoning_content')
+
+        if content:
+            return content
+
+        if reasoning:
+            final_answer = self._extract_final_answer(reasoning)
+            if final_answer:
+                return final_answer
+
+        return reasoning if reasoning else ""
+
+    def _extract_final_answer(self, reasoning: str) -> Optional[str]:
+        """从思考过程中提取最终答案"""
+        lines = reasoning.strip().split('\n')
+
+        for line in reversed(lines):
+            line = line.strip()
+
+            if not line:
+                continue
+
+            if line.startswith('```json'):
+                return self._extract_json_block(reasoning)
+            elif line.startswith('```'):
+                continue
+            elif line.startswith('{') or line.startswith('"'):
+                try:
+                    json.loads(line)
+                    return line
+                except:
+                    continue
+
+        return None
+
+    def _extract_json_block(self, reasoning: str) -> Optional[str]:
+        """从思考过程中提取 JSON 代码块"""
+        json_pattern = r'```json\s*(\{[^}]*\})\s*```'
+        matches = re.findall(json_pattern, reasoning, re.DOTALL)
+
+        if matches:
+            return matches[-1].strip()
+
+        json_pattern2 = r'(\{[^{}]*\})'
+        matches2 = re.findall(json_pattern2, reasoning)
+
+        if matches2:
+            return matches2[-1].strip()
+
+        return None
+
     def score_article(self, article: Dict) -> Dict:
-        prompt = f"""评估以下文章（返回 JSON 格式，不要包含任何其他文字）：
+        system_prompt = """你是一个文章评分助手，评估文章质量并返回纯 JSON 格式。
+重要：只在最后一行返回 JSON，不要包含任何其他文字或思考过程。"""
+
+        prompt = f"""评估以下文章（返回纯 JSON 格式，不要包含任何其他文字）：
 
 标题: {article.get('title', 'N/A')}
 摘要: {article.get('summary', article.get('content', ''))[:500]}
@@ -68,7 +144,7 @@ class NvidiaClient:
 {{"score": 0-10, "breakdown": {{"technical_depth": 0-10, "utility": 0-10, "timeliness": 0-10, "readability": 0-10, "credibility": 0-10, "engagement": 0-10}}, "recommended": true/false, "reason": "..."}}
 """
 
-        response = self.chat(prompt, temperature=0.1)
+        response = self.chat(prompt, temperature=0.1, system_prompt=system_prompt, max_tokens=500)
         response = response.strip()
 
         start_idx = response.find('{')
@@ -123,6 +199,9 @@ class NvidiaClient:
         title = article.get('title', '')
         content = article.get('content', article.get('summary', ''))[:500]
 
+        system_prompt = """你是一个文章分类助手，只返回类别名称。
+重要：只返回一个类别名称，不要包含其他文字。"""
+
         prompt = f"""将以下文章分类（返回唯一的一个类别名称）：
 
 标题: {title}
@@ -138,7 +217,7 @@ class NvidiaClient:
 
 返回格式：只返回类别名称，例如：Research"""
 
-        category = self.chat(prompt, temperature=0.1, max_tokens=50)
+        category = self.chat(prompt, temperature=0.1, system_prompt=system_prompt, max_tokens=50)
         category = category.strip()
         valid_categories = ['Research', 'Tools', 'News', 'Tutorial', 'Opinion', 'Discussion']
 

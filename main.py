@@ -27,10 +27,12 @@ def main():
     config = load_config()
     sources_config = config['sources']
     llm_provider = config.get('llm_provider', 'nvidia')
+    nvidia_model = config.get('nvidia_model', 'z-ai/glm4.7')
 
     print(f"📊 LLM Provider: {llm_provider}")
+    print(f"🤖 Model: {nvidia_model}")
 
-    llm_client = NvidiaClient()
+    llm_client = NvidiaClient(model=nvidia_model)
     article_filter = ArticleFilter(config, llm_client)
     issue_generator = IssueGenerator()
 
